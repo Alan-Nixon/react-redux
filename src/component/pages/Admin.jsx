@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { BackendUrl, blockUser, getAllUsers, searchUser, secondArgs } from '../../userBackend/UserController'
-// import { useNavigate } from 'react-router-dom'
+import { adminUserEdit, blockUser, deleteUserInBackend, getAllUsers, logout, searchUser, signupUser } from '../../userBackend/UserController'
+import { useNavigate } from 'react-router-dom'
 
 function Admin() {
+  const Navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [blockState, setBlockState] = useState()
   const [search, setSearch] = useState('')
   const [userData, setUserData] = useState({ Fname: "", Lname: "", Email: "", Password: "" })
   const [error, setError] = useState({ FnameErr: '', LnameErr: "", EmailErr: "", PasswordErr: "" })
-  const [edited, setEdited] = useState({ Fname: '', Lname: "", Email: "", FullName: "" })
-
+  // const [edited, setEdited] = useState({ Fname: '', Lname: "", Email: "", FullName: "" })
+  const [editedError, setEditedErr] = useState('')
   const [editUserDetails, setEditUserDetails] = useState({})
 
   const myRef = useRef()
@@ -28,6 +29,7 @@ function Admin() {
 
   const saveEditedText = e => {
     setEditUserDetails((rest) => ({ ...rest, [e.target.name]: e.target.value }))
+    setEditedErr("")
   }
 
   const handleSearch = async () => {
@@ -37,20 +39,40 @@ function Admin() {
   }
 
   const handleEdited = () => {
-    console.log(editUserDetails);
+    if (editValidation(editUserDetails)) {
+      alert("success")
+      if (adminUserEdit(editUserDetails)) {
+        window.Swal.fire({
+          title: 'Edited',
+          text: 'user edited successfully',
+          icon: 'success',
+          confirmButtonText: 'OK',
+        });
+
+      } else {
+        window.Swal.fire({
+          title: 'Error !!',
+          text: 'some internal error occured',
+          icon: 'danger',
+          confirmButtonText: 'OK',
+        });
+
+      }
+    }
   }
 
   const submitUser = async () => {
     if (Validation(userData)) {
-      alert("success")
-      const { data } = await (await fetch(BackendUrl + 'signup', secondArgs(userData))).json()
+      const data = await signupUser(userData)
+      console.log(data);
       window.Swal.fire({
         title: 'Successfully created',
         text: 'new user created succesfully!',
         icon: 'success',
         confirmButtonText: 'OK'
+
       }).then(() => {
-        setUsers((rest) => [...rest, data[0]])
+        setUsers((rest) => [...rest, data])
       });
     }
   }
@@ -62,6 +84,63 @@ function Admin() {
       behavior: 'smooth',
       block: 'start',
     });
+  }
+
+  function editValidation({ FName, LName, FullName, Email }) {
+    const fullNameRegex = /^[a-zA-Z]+([ _-][a-zA-Z]+)*$/;
+    const nameRegex = /^[A-Za-z\s]+$/;
+    const emailRegex = /^[\w\.-]+@[a-zA-Z\d\.-]+\.[a-zA-Z]{2,}$/;
+
+    if (nameRegex.test(FName)) {
+      if (nameRegex.test(LName)) {
+        if (fullNameRegex.test(FullName)) {
+          if (emailRegex.test(Email)) {
+            return true
+          } else {
+            setEditedErr("invalid email, enter a valid email")
+            return false
+          }
+        } else {
+          setEditedErr("invalid full name, Enter a valid full name")
+          return false
+        }
+      } else {
+        setEditedErr("invalid last name, Enter a valid last name")
+        return false
+      }
+    } else {
+      setEditedErr("invalid first name, Enter a valid first name")
+      return false
+    }
+  }
+
+  const deleteUser = (userId) => {
+    window.Swal.fire({
+      title: 'delete request',
+      text: 'are you sure want to delete the user',
+      icon: 'warning',
+      confirmButtonText: 'OK',
+      showCancelButton: true
+    }).then((res) => {
+      if (res.isConfirmed) {
+        if (deleteUserInBackend(userId)) {
+          window.Swal.fire({
+            title: 'deleted',
+            text: 'user deleted successfully',
+            icon: 'success',
+            confirmButtonText: 'OK',
+          }).then(()=>window.location.href = '/admin');
+        } else {
+          window.Swal.fire({
+            title: 'error',
+            text: 'some error occured successfully',
+            icon: 'danger',
+            confirmButtonText: 'OK',
+          });
+        }
+      }
+    })
+
   }
 
   function Validation({ Fname, Lname, Email, Password }) {
@@ -93,15 +172,15 @@ function Admin() {
   }
 
   return (
-    <>
-      <div className="row col-sm-8 mx-auto ">
+    <><div className="row" onClick={() => { logout(); window.location.href = '/admin/login' }} style={{ float: "right", marginRight: "4%", cursor: "pointer" }}> <span><strong style={{ float: "right", marginRight: "10%", marginTop: "5%" }}>&nbsp;&nbsp;Logout</strong></span> <i style={{ fontSize: "35px" }} className="fa fa-sign-out"></i> </div>
+      <div className="row col-sm-9 mx-auto mt-5">
 
         <div className="mx-auto col-sm-4">
           <center><h2>ADMIN PANEL</h2></center>
         </div>
 
         <div className=" col-sm-6 input-group mt-4">
-          
+
           <input type="text" style={{ height: "50px" }} onChange={(e) => { setSearch(e.target.value) }}
             className="form-control" placeholder="Recipient's username or email"
             aria-label="Recipient's username" aria-describedby="basic-addon2" />
@@ -109,11 +188,11 @@ function Admin() {
           <div className="input-group-append" onClick={handleSearch}>
             <span className="input-group-text" style={{ height: "50px" }} id="basic-addon2">Search Users</span>
           </div>
-           
+
         </div>
 
-        <div className="col-sm-1 mt-4 mr-2">
-          <button style={{ marginTop: "10px" }} onClick={() => {
+        <div className="col-sm-2 mt-3">
+          <button style={{ marginTop: "10px", marginRight: "20%", width: "90%" }} onClick={() => {
             myRef.current.style.display = ''
             myRef?.current?.scrollIntoView({
               behavior: 'smooth',
@@ -145,14 +224,15 @@ function Admin() {
                   <td>{user?.LName}</td>
                   <td>{user?.Email}</td>
                   <td>
-                    <button style={{ marginLeft: "10%" }}
+                    <button style={{ marginLeft: "5%", width: "29%" }}
                       onClick={async () => {
                         setBlockState(user?.isBlocked ? 'btn btn-warning' : 'btn btn-primary')
                         await blockUser(user._id)
                       }}
                       className={user?.isBlocked ? 'btn btn-warning' : 'btn btn-primary'}>{user?.isBlocked ? 'UnBlock' : 'Block'}
                     </button>
-                    <button className='btn btn-outline-primary' onClick={() => onClickEditUser(index)} style={{ marginLeft: "20px" }}>Edit</button>
+                    <button className='btn btn-outline-primary' onClick={() => onClickEditUser(index)} style={{ marginLeft: "10px", width: "29%" }}>Edit</button>
+                    <button className='btn btn-danger' onClick={() => deleteUser(user._id)} style={{ width: "29%", marginLeft: '10px' }} type="button">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -187,6 +267,7 @@ function Admin() {
         <div className="row" >
           <div className="col-sm-8 mx-auto">
             <h2 style={{ textAlign: "center" }}>Edit User</h2>
+            {editedError && <p className="error">{editedError}</p>}
             <input type="text" onChange={saveEditedText} className='form-control' defaultValue={editUserDetails?.FName} name='FName' placeholder='Enter your First Name' /><br />
             <input type='text' onChange={saveEditedText} className='form-control' defaultValue={editUserDetails?.LName} name='LName' placeholder='Enter your last Name' /><br />
             <input type='text' onChange={saveEditedText} className='form-control' defaultValue={editUserDetails?.FullName} name='FullName' placeholder='Enter your Full Name' /><br />

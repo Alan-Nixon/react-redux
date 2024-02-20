@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Home from './component/pages/Home';
 import Login from './component/pages/Login';
-import { IsLoggedIn } from './userBackend/UserController';
+import { IsLoggedIn, logout } from './userBackend/UserController';
 import Signup from './component/pages/Signup';
 import Admin from './component/pages/Admin';
 import Profile from './component/pages/Profile';
@@ -21,6 +21,10 @@ const App = () => {
     return (isLoggedInComponent ? ifLogged : notLogged);
   };
 
+  const Logout = () => {
+    logout()
+    return <Navigate to='/login' />
+  }
 
 
 
@@ -34,11 +38,13 @@ const App = () => {
 
         <Route path='/signup' element={<AuthenticatedHome ifLogged={<Navigate to='/' />} notLogged={<Signup />} />} />
 
-        <Route path='/profile' element={<Profile />} />
+        <Route path='/profile' element={<AuthenticatedHome ifLogged={<Profile />} notLogged={<Navigate to='/login' />} />} />
 
         <Route path='/admin' element={<AuthenticatedHome ifLogged={<Admin />} notLogged={<Navigate to='/admin/login' />} Admin />} />
 
         <Route path='/admin/login' element={<AuthenticatedHome ifLogged={<Navigate to='/admin' />} notLogged={<Login isAdminLogin={true} />} Admin />} />
+
+        <Route path='/logout' element={<Logout />} />
 
       </Routes>
     </Router>

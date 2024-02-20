@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import '../css/Login.css'
-// import Navbar from './Navbar'
+import { useDispatch } from 'react-redux'
 import { BackendUrl, secondArgs } from '../../userBackend/UserController'
-import { useNavigate } from 'react-router-dom'
-// import axios from 'axios'
+import { redirect, useNavigate } from 'react-router-dom'
+import { addFormData } from '../redux/actions'
+import axios from 'axios'
+
 
 function Login({ isAdminLogin }) {
-
+    const dispatch = useDispatch()
     const Navigate = useNavigate()
 
     const [loginData, setLoginData] = useState({ Email: "", Password: "" })
@@ -14,25 +16,25 @@ function Login({ isAdminLogin }) {
 
     const submitLogin = async () => {
         if (validation(loginData.Email.trim(), loginData.Password.trim())) {
-            alert("hi")
-             await fetch('/auth')
-            // const result = await fetch(BackendUrl + "login", secondArgs(loginData))
-            // const { token, passwordErr, emailErr, userData } = await result.json()
-            // console.log("token is : ",token,userData);
-            // if (passwordErr || emailErr) {
-            //     setError((rest)=>({...rest,Email:emailErr}))
-            //     setError((rest)=>({...rest,Password:passwordErr}))
-            // } else {
-            //     if (token) {
-            //         alert("success")
-            //         await fetch('/isAuthenticated',)
-            //         alert("call done")
-            //         // Navigate('/')
+            loginData.isAdminLogin = isAdminLogin
+            const response = await axios.post(BackendUrl + 'login', loginData, { withCredentials: true })
+            console.log(response);
 
-            //     } else {
-            //         Navigate('/login')
-            //     }
-            // }
+            if (response.data.passwordErr || response.data.emailErr) {
+                setError((rest) => ({ ...rest, Email: response.data.emailErr }))
+                setError((rest) => ({ ...rest, Password: response.data.passwordErr }))
+                alert("error found")
+            } else {
+                if (response.data.token) {
+                    const userData = response.data
+                    userData.token = response.token
+                    dispatch(addFormData(userData));
+                    window.location.href = isAdminLogin ? '/admin' : '/'
+
+                } else {
+                    Navigate('/login')
+                }
+            }
 
         }
     }
@@ -57,7 +59,7 @@ function Login({ isAdminLogin }) {
     return (
         <>
             {/* <Navbar /> */}
-            <div className="row" style={{backgroundColor:"rgb(5, 42, 77)"}}>
+            <div className="row" style={{ backgroundColor: "rgb(5, 42, 77)" }}>
                 <div className="mx-auto mt-5 form-bg">
                     <form className="form" autocomplete="off">
                         <div className="form__title">
@@ -81,15 +83,15 @@ function Login({ isAdminLogin }) {
                                 setError((rest) => ({ ...rest, Password: "" }))
                             }} id="password" className="form__input" defaultValue="alan@252" />
                         </div>
-                        <div className="form__links">
-                            <div className="form__link"><a href="/">forgot password?</a></div>
-                            <div className="form__link"><a href="/signup">signup</a></div>
-                        </div>
+                        <div className="form__links"><span></span>
+                            {!isAdminLogin &&
+                                <div className="form__link" ><a href="/signup"> <span style={{ color: "white", float: "right" }}>signup</span></a></div>
+                            }</div>
                         <button type="button" onClick={submitLogin} className="form__btn">login</button>
                     </form>
                 </div>
             </div>
-            <div className="" style={{backgroundColor:"rgb(5, 42, 77)",height:'55px'}}></div>
+            <div className="" style={{ backgroundColor: "rgb(5, 42, 77)", height: '55px' }}></div>
 
         </>
     )
